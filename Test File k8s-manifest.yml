@@ -1,0 +1,554 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations: {}
+  labels:
+    app: meshery
+  name: meshery-server
+  namespace: default
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - '*'
+    verbs:
+      - '*'
+  - nonResourceURLs:
+      - /metrics
+      - /health
+      - /ping
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations: {}
+  labels:
+    app: meshery
+  name: meshery-server
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: meshery-server
+subjects:
+  - kind: ServiceAccount
+    name: meshery-server
+    namespace: meshery
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery
+  name: meshery
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery
+    spec:
+      containers:
+        - env:
+            - name: EVENT
+              value: mesheryLocal
+            - name: PROVIDER_BASE_URLS
+              value: https://cloud.layer5.io
+            - name: ADAPTER_URLS
+              value: meshery-istio:10000 meshery-linkerd:10001 meshery-consul:10002 meshery-nsm:10004 meshery-app-mesh:10005 meshery-kuma:10007 meshery-nginx-sm:10010
+          image: layer5/meshery:stable-latest
+          imagePullPolicy: Always
+          name: meshery
+          ports:
+            - containerPort: 8080
+          resources: {}
+      restartPolicy: Always
+      serviceAccountName: meshery-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-app-mesh
+  name: meshery-app-mesh
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery-app-mesh
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery-app-mesh
+    spec:
+      containers:
+        - image: meshery/meshery-app-mesh:stable-latest
+          imagePullPolicy: Always
+          name: meshery-app-mesh
+          ports:
+            - containerPort: 10005
+          resources: {}
+      restartPolicy: Always
+      serviceAccount: meshery-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-cilium
+  name: meshery-cilium
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery-cilium
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery-cilium
+    spec:
+      containers:
+        - image: layer5/meshery-cilium:stable-latest
+          imagePullPolicy: Always
+          name: meshery-cilium
+          ports:
+            - containerPort: 10012
+          resources: {}
+      restartPolicy: Always
+      serviceAccount: meshery-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-consul
+  name: meshery-consul
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery-consul
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery-consul
+    spec:
+      containers:
+        - image: layer5/meshery-consul:stable-latest
+          imagePullPolicy: Always
+          name: meshery-consul
+          ports:
+            - containerPort: 10002
+          resources: {}
+      restartPolicy: Always
+      serviceAccount: meshery-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-istio
+  name: meshery-istio
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery-istio
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery-istio
+    spec:
+      containers:
+        - image: layer5/meshery-istio:stable-latest
+          imagePullPolicy: Always
+          name: meshery-istio
+          ports:
+            - containerPort: 10000
+          resources: {}
+      restartPolicy: Always
+      serviceAccount: meshery-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-kuma
+  name: meshery-kuma
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery-kuma
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery-kuma
+    spec:
+      containers:
+        - image: layer5/meshery-kuma:stable-latest
+          imagePullPolicy: Always
+          name: meshery-kuma
+          ports:
+            - containerPort: 10007
+          resources: {}
+      restartPolicy: Always
+      serviceAccount: meshery-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-linkerd
+  name: meshery-linkerd
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery-linkerd
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery-linkerd
+    spec:
+      containers:
+        - image: meshery/meshery-linkerd:stable-latest
+          imagePullPolicy: Always
+          name: meshery-linkerd
+          ports:
+            - containerPort: 10001
+          resources: {}
+      restartPolicy: Always
+      serviceAccount: meshery-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-nginx-sm
+  name: meshery-nginx-sm
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery-nginx-sm
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery-nginx-sm
+    spec:
+      containers:
+        - image: layer5/meshery-nginx-sm:stable-latest
+          imagePullPolicy: Always
+          name: meshery-nginx-sm
+          ports:
+            - containerPort: 10010
+          resources: {}
+      restartPolicy: Always
+      serviceAccount: meshery-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-nsm
+  name: meshery-nsm
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery-nsm
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery-nsm
+    spec:
+      containers:
+        - image: layer5/meshery-nsm:stable-latest
+          imagePullPolicy: Always
+          name: meshery-nsm
+          ports:
+            - containerPort: 10004
+          resources: {}
+      restartPolicy: Always
+      serviceAccount: meshery-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-traefik-mesh
+  name: meshery-traefik-mesh
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: meshery-traefik-mesh
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: meshery-traefik-mesh
+    spec:
+      containers:
+        - image: layer5/meshery-traefik-mesh:stable-latest
+          imagePullPolicy: Always
+          name: meshery-traefik-mesh
+          ports:
+            - containerPort: 10006
+          resources: {}
+      restartPolicy: Always
+      serviceAccount: meshery-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery
+  name: meshery
+  namespace: default
+spec:
+  ports:
+    - name: http
+      port: 9081
+      targetPort: 8080
+  selector:
+    io.kompose.service: meshery
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-app-mesh
+  name: meshery-app-mesh
+  namespace: default
+spec:
+  ports:
+    - name: "10005"
+      port: 10005
+      targetPort: 10005
+  selector:
+    io.kompose.service: meshery-app-mesh
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-cilium
+  name: meshery-cilium
+  namespace: default
+spec:
+  ports:
+    - name: "10012"
+      port: 10012
+      targetPort: 10012
+  selector:
+    io.kompose.service: meshery-cilium
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-istio
+  name: meshery-istio
+  namespace: default
+spec:
+  ports:
+    - name: "10000"
+      port: 10000
+      targetPort: 10000
+  selector:
+    io.kompose.service: meshery-istio
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-kuma
+  name: meshery-kuma
+  namespace: default
+spec:
+  ports:
+    - name: "10007"
+      port: 10007
+      targetPort: 10007
+  selector:
+    io.kompose.service: meshery-kuma
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-linkerd
+  name: meshery-linkerd
+  namespace: default
+spec:
+  ports:
+    - name: "10001"
+      port: 10001
+      targetPort: 10001
+  selector:
+    io.kompose.service: meshery-linkerd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-nginx-sm
+  name: meshery-nginx-sm
+  namespace: default
+spec:
+  ports:
+    - name: "10010"
+      port: 10010
+      targetPort: 10010
+  selector:
+    io.kompose.service: meshery-nginx-sm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-nsm
+  name: meshery-nsm
+  namespace: default
+spec:
+  ports:
+    - name: "10004"
+      port: 10004
+      targetPort: 10004
+  selector:
+    io.kompose.service: meshery-nsm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-traefik-mesh
+  name: meshery-traefik-mesh
+  namespace: default
+spec:
+  ports:
+    - name: "10000"
+      port: 10006
+      targetPort: 10006
+  selector:
+    io.kompose.service: meshery-traefik-mesh
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f ../docker-compose.yaml
+    kompose.version: 1.32.0 ()
+  labels:
+    io.kompose.service: meshery-consul
+  name: meshery-consul
+  namespace: default
+spec:
+  ports:
+    - name: "10002"
+      port: 10002
+      targetPort: 10002
+  selector:
+    io.kompose.service: meshery-consul
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations: {}
+  labels: {}
+  name: meshery-server
+  namespace: default
